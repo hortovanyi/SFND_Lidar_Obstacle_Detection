@@ -6,6 +6,7 @@
 #include "../../processPointClouds.h"
 // using templates for processPointClouds so also include .cpp to help linker
 #include "../../processPointClouds.cpp"
+#include <cmath>
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData()
 {
@@ -69,11 +70,77 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	// TODO: Fill in this function
 
 	// For max iterations 
+	while(maxIterations--) {
+
 
 	// Randomly sample subset and fit line
+	std::unordered_set<int> inliers;
+	while (inliers.size() < 3)
+		inliers.insert(rand()%(cloud->points.size()));
+
+	float x1, y1, z1, x2, y2, z2, x3, y3, z3;
 
 	// Measure distance between every point and fitted line
-	// If distance is smaller than threshold count it as inlier
+	auto itr = inliers.begin();
+	x1 = cloud->points[*itr].x;
+	y1 = cloud->points[*itr].y;
+	z1 = cloud->points[*itr].z;
+	itr++;
+	x2 = cloud->points[*itr].x;
+	y2 = cloud->points[*itr].y;
+	z2 = cloud->points[*itr].z;
+	itr++;
+	x3 = cloud->points[*itr].x;
+	y3 = cloud->points[*itr].y;
+	z3 = cloud->points[*itr].z;
+
+		
+	Eigen::Vector3f v1(x2-x1, y2-y1, z2-z1);
+	Eigen::Vector3f v2(x3-x1, y3-y1, z3-z1);
+
+	// std::cout << "v1: " << v1 << std::endl;
+	// std::cout << "v2:" << v2 << std::endl;
+
+	float i, j, k;
+
+	Eigen::Vector3f nv = v1.cross(v2);
+	i = nv[0];
+	j = nv[1];
+	k = nv[2];
+
+	// std::cout << "i: " << i << " j: " << j << " k: " << k << std::endl;
+
+	float a = i;
+	float b = j;
+	float c = k;
+	float d = -(i*x1+ j*y1+k*z1);
+	float e = sqrt(a*a+b*b+c*c); 
+
+	
+	for(int index = 0; index < cloud->points.size(); index++)
+	{
+		if (inliers.count(index)>0)
+			continue;
+
+		pcl::PointXYZ point = cloud->points[index];
+		float x = point.x;
+		float y = point.y;
+		float z = point.z;
+
+		float d = fabs(a*x+b*y+c*z+d)/e;
+
+		// If distance is smaller than threshold count it as inlier
+		if (d <= distanceTol)
+			inliers.insert(index);
+
+	}
+
+	if (inliers.size()>inliersResult.size())
+	{
+		inliersResult = inliers;
+	}
+	
+	}
 
 	// Return indicies of inliers from fitted line with most inliers
 	
@@ -88,11 +155,12 @@ int main ()
 	pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
 
 	// Create data
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData();
+	// pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData3D();
 	
 
 	// TODO: Change the max iteration and distance tolerance arguments for Ransac function
-	std::unordered_set<int> inliers = Ransac(cloud, 0, 0);
+	std::unordered_set<int> inliers = Ransac(cloud, 7, 0.5);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr  cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());
