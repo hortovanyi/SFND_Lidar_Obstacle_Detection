@@ -128,6 +128,114 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     return segResult;
 }
 
+template<typename PointT>
+std::unordered_set<int> ProcessPointClouds<PointT>::Ransac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
+{
+	std::unordered_set<int> inliersResult;
+	srand(time(NULL));
+	
+	// For max iterations 
+	while(maxIterations--) {
+
+
+	// Randomly sample subset and fit line
+	std::unordered_set<int> inliers;
+	while (inliers.size() < 3)
+		inliers.insert(rand()%(cloud->points.size()));
+
+	float x1, y1, z1, x2, y2, z2, x3, y3, z3;
+
+	// Measure distance between every point and fitted line
+	auto itr = inliers.begin();
+	x1 = cloud->points[*itr].x;
+	y1 = cloud->points[*itr].y;
+	z1 = cloud->points[*itr].z;
+	itr++;
+	x2 = cloud->points[*itr].x;
+	y2 = cloud->points[*itr].y;
+	z2 = cloud->points[*itr].z;
+	itr++;
+	x3 = cloud->points[*itr].x;
+	y3 = cloud->points[*itr].y;
+	z3 = cloud->points[*itr].z;
+
+		
+	Eigen::Vector3f v1(x2-x1, y2-y1, z2-z1);
+	Eigen::Vector3f v2(x3-x1, y3-y1, z3-z1);
+
+	// std::cout << "v1: " << v1 << std::endl;
+	// std::cout << "v2:" << v2 << std::endl;
+
+	float i, j, k;
+
+	Eigen::Vector3f nv = v1.cross(v2);
+	i = nv[0];
+	j = nv[1];
+	k = nv[2];
+
+	// std::cout << "i: " << i << " j: " << j << " k: " << k << std::endl;
+
+	float a = i;
+	float b = j;
+	float c = k;
+	float d = -(i*x1+ j*y1+k*z1);
+	float e = sqrt(a*a+b*b+c*c); 
+
+	
+	for(int index = 0; index < cloud->points.size(); index++)
+	{
+		if (inliers.count(index)>0)
+			continue;
+
+		auto point = cloud->points[index];
+		float x = point.x;
+		float y = point.y;
+		float z = point.z;
+
+		float dist = fabs(a*x+b*y+c*z+d)/e;
+
+		// If distance is smaller than threshold count it as inlier
+		if (dist <= distanceTol)
+			inliers.insert(index);
+
+	}
+
+	if (inliers.size()>inliersResult.size())
+	{
+		inliersResult = inliers;
+	}
+	
+	}
+
+	// Return indicies of inliers from fitted line with most inliers
+	
+	return inliersResult;
+}
+
+template<typename PointT>
+std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::SegmentPlaneRansac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceThreshold)
+{
+    // Time segmentation process
+    auto startTime = std::chrono::steady_clock::now();
+
+    std::unordered_set<int> inliers = Ransac(cloud, maxIterations, distanceThreshold);
+    
+    pcl::PointIndices::Ptr pointInliers = pcl::make_shared<pcl::PointIndices>();
+
+	for(int index = 0; index < cloud->points.size(); index++)
+	{
+        if (inliers.count(index))
+            pointInliers->indices.push_back(index);
+	}
+
+    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = SeparateClouds(pointInliers, cloud);
+
+    auto endTime = std::chrono::steady_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << "plane segmentation took " << elapsedTime.count() << " milliseconds" << std::endl;
+
+    return segResult;
+}
 
 template<typename PointT>
 std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::Clustering(typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance, int minSize, int maxSize)
