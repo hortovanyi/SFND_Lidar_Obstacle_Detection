@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include <cmath>
 #include "render/box.h"
+#include "kdtree.h"
 
 template<typename PointT>
 class ProcessPointClouds {
@@ -41,6 +42,8 @@ public:
     std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> SegmentPlaneRansac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceThreshold);
 
     std::vector<typename pcl::PointCloud<PointT>::Ptr> Clustering(typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance, int minSize, int maxSize);
+    
+    std::vector<typename pcl::PointCloud<PointT>::Ptr> EuclideanClustering(typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance, int minSize, int maxSize);
 
     Box BoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster);
 

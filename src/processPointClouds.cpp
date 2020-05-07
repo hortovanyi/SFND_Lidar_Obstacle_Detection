@@ -278,6 +278,70 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::C
     return clusters;
 }
 
+template<typename PointT>
+std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::EuclideanClustering(typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance, int minSize, int maxSize)
+{
+
+    // Time clustering process
+    auto startTime = std::chrono::steady_clock::now();
+
+    std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
+    std::vector<std::vector<int>> clustersIndices;
+
+
+    // create and popualte KdTree
+    auto tree = new KdTree<pcl::PointXYZI>(cloud);
+    // for (int i=0; i < cloud->points.size(); i++)
+    //     tree->insert(&cloud->points[i],i);
+
+    std::vector<bool> processed(cloud->points.size(), false); 
+
+    std::function<void(int, std::vector<int>&)> clusterHelper;
+    clusterHelper = [&clusterHelper, cloud, &processed, tree, clusterTolerance, maxSize](int indice, std::vector<int>& cluster) {
+        processed[indice] = true;
+        cluster.push_back(indice);
+
+        if (cluster.size() >= maxSize)
+            return;
+
+        std::vector<int> nearest = tree->search(&cloud->points[indice], clusterTolerance);
+
+        for (int id: nearest)
+            if (!processed[id])
+                clusterHelper(id, cluster);
+    };
+
+
+    for (size_t i = 0; i < cloud->points.size(); i++)
+    {
+        if(processed[i])
+            continue;
+        
+        std::vector<int> cluster;
+        clusterHelper(i, cluster);
+        if (cluster.size() >= minSize)
+            clustersIndices.push_back(cluster);
+    }
+    
+
+    for (std::vector<int> clusterIndices: clustersIndices){
+        typename pcl::PointCloud<PointT>::Ptr cloudCluster (new pcl::PointCloud<PointT>);
+        for (int indice: clusterIndices)
+            cloudCluster->points.push_back(cloud->points[indice]);
+        cloudCluster->width = cloudCluster->points.size();
+        cloudCluster->height = 1;
+        cloudCluster->is_dense = true;
+
+        clusters.push_back(cloudCluster);
+        std::cout << "PointCloud representing the Cluster: " << cloudCluster->points.size() << " data points." << std::endl;
+    }
+
+    auto endTime = std::chrono::steady_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " << clusters.size() << " clusters" << std::endl;
+
+    return clusters;
+}
 
 template<typename PointT>
 Box ProcessPointClouds<PointT>::BoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster)

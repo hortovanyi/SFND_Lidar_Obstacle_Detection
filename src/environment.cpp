@@ -88,14 +88,15 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
     // Experiment with the ? values and find what works best
     auto filterCloud = pointProcessorI->FilterCloud(inputCloud, 0.2, Eigen::Vector4f (-30, -4.5, -2, 1), Eigen::Vector4f ( 30, 6.5,1, 1));
     // auto segmentCloud = pointProcessorI->SegmentPlane(filterCloud, 50, 0.2);
-    auto segmentCloud = pointProcessorI->SegmentPlaneRansac(filterCloud, 25, 0.225);
+    auto segmentCloud = pointProcessorI->SegmentPlaneRansac(filterCloud, 25, 0.2);
     auto obstCloud = segmentCloud.first; // obstacle cloud
     auto planeCloud = segmentCloud.second; // plane cloud
     
     renderPointCloud(viewer, obstCloud, "obstCloud", Color(1,0,0));
     renderPointCloud(viewer, planeCloud, "planeCloud", Color(0,1,0));
     
-    auto cloudClusters = pointProcessorI->Clustering(obstCloud, .5, 15, 550);
+    // auto cloudClusters = pointProcessorI->Clustering(obstCloud, .5, 10, 600);
+    auto cloudClusters = pointProcessorI->EuclideanClustering(obstCloud, .5, 10, 600);
 
     int clusterId = 0;
     std::vector<Color> colors = {Color(1,0,0), Color(0,1,0), Color(0,0,1)};
