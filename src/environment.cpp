@@ -96,7 +96,7 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
     renderPointCloud(viewer, planeCloud, "planeCloud", Color(0,1,0));
     
     // auto cloudClusters = pointProcessorI->Clustering(obstCloud, .5, 10, 600);
-    auto cloudClusters = pointProcessorI->EuclideanClustering(obstCloud, .5, 10, 600);
+    auto cloudClusters = pointProcessorI->EuclideanClustering(obstCloud, .45, 15, 700);
 
     int clusterId = 0;
     std::vector<Color> colors = {Color(1,0,0), Color(0,1,0), Color(0,0,1)};

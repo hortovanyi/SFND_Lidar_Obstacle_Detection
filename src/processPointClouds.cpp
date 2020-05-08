@@ -290,7 +290,7 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::E
 
 
     // create and popualte KdTree
-    auto tree = new KdTree<pcl::PointXYZI>(cloud);
+    auto tree = new KdTree(cloud);
     // for (int i=0; i < cloud->points.size(); i++)
     //     tree->insert(&cloud->points[i],i);
 

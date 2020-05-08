@@ -19,14 +19,15 @@ struct Node
 	{}
 };
 
-template<typename PointT>
 struct KdTree
 {
+	const int n_dim = 3;
+
 	Node* root;
 
-	typename pcl::PointCloud<PointT>::Ptr cloud;
+	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud;
 
-	KdTree(typename pcl::PointCloud<PointT>::Ptr cloud)
+	KdTree(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud)
 	: root(NULL)
 	{
 		this->cloud = cloud;
@@ -42,9 +43,9 @@ struct KdTree
 			*node = new Node(point,id);
 		} else {
 			// Calculate current dim
-			uint cd = depth % 3;
+			uint cd = depth % n_dim;
 
-			if(point->getArray3fMap()[cd] < ((*node)->point->getArray3fMap()[cd]))
+			if(point->getArray4fMap()[cd] < ((*node)->point->getArray4fMap()[cd]))
 				insertHelper(&((*node)->left), depth+1, point, id);
 			else
 				insertHelper(&((*node)->right), depth+1, point, id);
@@ -56,31 +57,33 @@ struct KdTree
 		insertHelper(&root, 0, point, id);
 	}
 
-	void searchHelper(pcl::PointXYZI *target, Node* node, int depth, float distanceToL, std::vector<int>& ids)
+	void searchHelper(pcl::PointXYZI *target, Node* node, int depth, float distanceTol, std::vector<int>& ids)
 	{
 		if(node!=NULL)
 		{
-			auto tp = target->getArray3fMap();
-			auto np = node->point->getArray3fMap();
+			auto tp = target->getArray4fMap();
+			auto np = node->point->getArray4fMap();
+			
 
-			if((np[0]>=(tp[0]-distanceToL)&&np[0]<=(tp[0]+distanceToL)) 
-			&& (np[1]>=(tp[1]-distanceToL)&&np[1]<=(tp[1]+distanceToL))
-			&& (np[1]>=(tp[2]-distanceToL)&&np[2]<=(tp[2]+distanceToL)))
+			if((np[0]>=(tp[0]-distanceTol)&&np[0]<=(tp[0]+distanceTol)) 
+			&& (np[1]>=(tp[1]-distanceTol)&&np[1]<=(tp[1]+distanceTol))
+			&& (np[2]>=(tp[2]-distanceTol)&&np[2]<=(tp[2]+distanceTol)))
 			{
 				float dx = np[0]-tp[0];
 				float dy = np[1]-tp[1];
 				float dz = np[2]-tp[2];
 				float distance = sqrt(dx*dx+dy*dy+dz*dz);
+				// float distance = sqrt(dx*dx+dy*dy);
 				// float distance = pcl::euclideanDistance(*target, *node->point);
-				if (distance <= distanceToL)
+				if (distance < distanceTol)
 					ids.push_back(node->id);
 			}
 
 			// check across boundary
-			if((tp[depth%3]-distanceToL)<np[depth%3])
-				searchHelper(target, node->left, depth+1, distanceToL, ids);
-			if((tp[depth%3]+distanceToL)>np[depth%3])
-				searchHelper(target, node->right, depth+1, distanceToL, ids);
+			if((tp[depth%n_dim]-distanceTol)<np[depth%n_dim])
+				searchHelper(target, node->left, depth+1, distanceTol, ids);
+			if((tp[depth%n_dim]+distanceTol)>np[depth%n_dim])
+				searchHelper(target, node->right, depth+1, distanceTol, ids);
 		}
 	}
 
